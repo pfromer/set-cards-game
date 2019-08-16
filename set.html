@@ -1,0 +1,311 @@
+<html>
+	<head>
+		<style type="text/css">
+		.card
+		{
+		border-style:solid;
+		border-width:0px;
+		}
+		.clicked
+		{
+		border-style:solid;
+		border-width:3px;
+		border-color:blue;
+		}
+		.inSet{
+		background-size: 40px 40px;
+		}
+		.timer{
+			position:absolute;
+			width:20px;
+			right:350px;
+			color:white;
+			font-size:200;
+		}
+		</style>
+	
+		<script src="js/jquery.min.js" type="text/javascript"></script>
+		<script src="js/jquery-ui-1.8.20.custom.min.js" type="text/javascript"></script>
+		<script type ="text/javascript">
+			
+			var timeLeft = 1000;
+			var deck = new Deck();
+			var c = deck.AllCards();
+			var topPositionForValidSets = 0;
+			
+			var colors = new Array();
+			
+			for (col = 30; col>=0;col--){
+				colors.push("rgb("+ (col*16).toString()+ ",0,0) ");
+			}
+			
+			var progressBarColors = new Array();
+			
+			for (col = 230; col>=0;col--){
+				progressBarColors.push("rgb(0,40,"+ (col).toString()+ ") ");
+			}
+			
+			function timer(n){
+				$("#foo").html(n.toString());
+				timeLeft--;
+				$('.timer').html(timeLeft);
+				setTimeout(function(){timer(timeLeft);},700);
+			}
+			
+			var selectedCards = new Array();
+			var stackOfPositions = new Array();
+			
+			function Position(x,y){
+				this.x = x;
+				this.y = y;
+			}
+			
+			function initializeStackOfPositions() {
+				for(y = 3 ; y >= 0 ; y--) {
+					for (x = 4; x >= 0; x--) {
+						var position = new Position(x, y);
+						stackOfPositions.push(position);
+					}
+				}
+			}
+			
+			function Card(color, shape, filling, count, cardNumber){
+				this.color = color;
+				this.shape = shape;
+				this.filling = filling;
+				this.count = count;
+				this.cardNumber = cardNumber;
+			}
+			
+			function putFirstCardsOnTheTable() {
+				for (i = 0; i < 20; i++) {   
+					takeACardFromMazoAndPutItAtNextFreePosition();
+				} 
+			}
+	
+			
+			function Deck(){
+				this.AllCards = setCards;
+				function setCards(){
+					var cardNumber = 1;
+					var result = new Array();
+					 for (count = 1; count <= 3; count++) {
+						for (color = 1; color <= 3; color++) {
+							for (shape = 1; shape <= 3; shape++) {
+								for (filling = 1; filling <= 3; filling++) {
+									var card = new Card(color, shape, filling, count, cardNumber);
+									result[cardNumber - 1] = card;
+									cardNumber= cardNumber +1;
+								}
+							}
+						}
+					}
+					return result;
+				}
+			}
+			
+			function takeCardRandomlyFromDeck(){
+			
+				if(c.length > 0){
+					var n = Math.floor((Math.random()*c.length)); 
+					var d = new Array();
+					
+					for (i=0;i<c.length;i++){
+						d[i]=c[i];
+					}
+					
+					c.splice(n,1);
+					return d[n];
+				}
+			
+			}
+			
+			function putCardOnTable(){
+				var position = stackOfPositions.pop();
+				var card = takeCardRandomlyFromDeck();
+				var cardDiv = createNewDivWithThisCardAndThisPosition(card,position);
+				cardDiv.click(function(){handleCard(cardDiv)});
+				$("#tablero").append(cardDiv);
+			}
+			
+			function createNewDivWithThisCardAndThisPosition(card, position){
+				var result = $('<div id="card' + card.cardNumber + '"></div>')
+				var urlImage = 'url(images/' + card.cardNumber.toString() + ".gif)";
+				
+				result.width(95);
+				result.height(62);
+				
+				result.addClass("card");
+				
+				result.attr("color",card.color);
+				result.attr("shape",card.shape);
+				result.attr("filling",card.filling);
+				result.attr("count",card.count);
+				result.attr("cardNumber",card.cardNumber);
+				result.attr("positionX",position.x);
+				result.attr("positionY",position.y);
+				
+				result.css('position','absolute');
+				result.css('left', (position.x*100 + 300).toString() + 'px');
+				result.css('top', (position.y*100).toString() + 'px');
+				result.css('background-image',urlImage);
+				return result;
+			
+			}
+			
+			
+			function Set(card1,card3,card2) {
+				this.Card1 = card1;
+				this.Card2 = card2;
+				this.Card3 = card3;
+				this.isValid = isValid;
+				
+				function theyAreAllEqual(x,y,z) {
+					return (x == y && y == z);
+				}
+
+				function theyAreAllDifferent(x,y,z) {
+					return (x != y && y != z && x != z);
+				}
+
+				function theyAreAllDifferentOrTheyAreAllEqual(x,y,z) {
+					return theyAreAllEqual(x, y, z) || theyAreAllDifferent(x, y, z); 
+				}
+
+				function isValid() {
+					return theyAreAllDifferentOrTheyAreAllEqual(card1.color, card2.color, card3.color) &&
+						theyAreAllDifferentOrTheyAreAllEqual(card1.shape, card2.shape, card3.shape) &&
+						theyAreAllDifferentOrTheyAreAllEqual(card1.filling, card2.filling, card3.filling) &&
+						theyAreAllDifferentOrTheyAreAllEqual(card1.count, card2.count, card3.count) &&
+						theyAreAllDifferent(card1.cardNumber, card2.cardNumber, card3.cardNumber);
+				}
+			}
+			
+			function giveMeIndexForThisCardInSelectedCards(cardNumber){
+				for(index=0;index<selectedCards.length;index++){
+					if (selectedCards[index].cardNumber == cardNumber){
+						return index;
+					}
+				}
+			}
+			
+			function extractCardFromDiv(cardDiv){
+		
+				var color = cardDiv.attr('color');
+				var shape = cardDiv.attr('shape');
+				var filling = cardDiv.attr('filling');
+				var count = cardDiv.attr('count');
+				var cardNumber = cardDiv.attr('cardNumber');
+				return new Card(color, shape, filling, count, cardNumber);
+			}
+			
+			function pushPositionsToStackOfPositions(cardDiv1,cardDiv2,cardDiv3){
+			
+			var position1 = new Position(parseInt(cardDiv1.attr("positionX")),parseInt(cardDiv1.attr("positiony")));
+			var position2 = new Position(parseInt(cardDiv2.attr("positionX")),parseInt(cardDiv2.attr("positiony")));
+			var position3 = new Position(parseInt(cardDiv3.attr("positionX")),parseInt(cardDiv3.attr("positiony")));
+			
+			stackOfPositions.push(position1);
+			stackOfPositions.push(position2);
+			stackOfPositions.push(position3);
+			
+			}
+			
+			function putMoreCardsOnTable(){
+				putCardOnTable();
+				putCardOnTable();
+				putCardOnTable();
+				
+			
+			}
+			
+			function handleCard(myCardDiv){
+			
+					if (myCardDiv.hasClass("clicked")) {
+						myCardDiv.removeClass("clicked");
+					}
+					else{
+						myCardDiv.addClass("clicked");
+					}
+					
+					if (myCardDiv.hasClass("clicked")){
+					
+						selectedCards.push(myCardDiv);
+					}
+					else{
+						var indexInSelectedCards = giveMeIndexForThisCardInSelectedCards(myCardDiv.attr("cardNumber"));
+						selectedCards.splice(indexInSelectedCards,1);
+					}
+					if (selectedCards.length == 3){
+						var card1 = extractCardFromDiv(selectedCards[0]);
+						var card2 = extractCardFromDiv(selectedCards[1]);
+						var card3 = extractCardFromDiv(selectedCards[2]);
+						
+						var mySet = new Set(card1,card2,card3);
+						
+						if (mySet.isValid()){
+							
+							selectedCards[0].animate(  {left:30,top:topPositionForValidSets,width:40,height:40}, "slow");
+							selectedCards[1].animate(  {left:80,top:topPositionForValidSets,width:40,height:40}, "slow");
+							selectedCards[2].animate(  {left:130,top:topPositionForValidSets,width:40,height:40}, "slow");
+							selectedCards[0].addClass("inSet");
+							selectedCards[1].addClass("inSet");
+							selectedCards[2].addClass("inSet");
+							topPositionForValidSets = topPositionForValidSets + 50;
+							
+							pushPositionsToStackOfPositions(selectedCards[0],selectedCards[1],selectedCards[2]);
+							putMoreCardsOnTable(); 
+							/*$('.card').click(function(){
+								handleCard($(this));
+							});*/
+							selectedCards = new Array();
+							
+							$('body').animate({ backgroundColor: colors.pop()}, "slow");
+
+							
+							
+						}
+					}
+			
+			
+			}
+			
+			$(document).ready(function(){
+			
+				
+				
+				$('#myButton').click(function(){
+					$("#foo2").html((myTime*100).toString());
+				});
+				
+				initializeStackOfPositions();
+				for(a=0;a<20;a++){
+				putCardOnTable();
+				}
+				timer(1);
+				/*$('.card').click(function(){
+					handleCard($(this));
+				});*/
+			});
+			
+			
+			
+		
+		</script>
+	</head>
+	<body style="background-color:000">
+	<div id="miDiv"><span id="foo">Some text</span></div>
+	<div id="tablero" style="position:relative;margin:auto;width:1000px;"height="100%">
+	</div>
+	
+	
+	</body>
+<html>
+
+
+
+
+
+
+
+
